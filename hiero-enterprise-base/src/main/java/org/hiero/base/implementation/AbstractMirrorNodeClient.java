@@ -4,6 +4,7 @@ import com.hedera.hashgraph.sdk.AccountId;
 import com.hedera.hashgraph.sdk.ContractId;
 import com.hedera.hashgraph.sdk.TokenId;
 import com.hedera.hashgraph.sdk.TopicId;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,11 +49,11 @@ public abstract class AbstractMirrorNodeClient<JSON> implements MirrorNodeClient
   @Override
   public @NonNull Page<Nft> queryNfts(@NonNull NftQuery query) throws HieroException {
     Objects.requireNonNull(query, "query must not be null");
-    Map<String, String> params = new HashMap<>();
-    query.getAccountId().ifPresent(id -> params.put("account.id", id.toString()));
-    query.getTokenId().ifPresent(id -> params.put("token.id", id.toString()));
-    query.getLimit().ifPresent(l -> params.put("limit", l.toString()));
-    query.getOrder().ifPresent(o -> params.put("order", o.toString()));
+    Map<String, List<String>> params = new HashMap<>();
+    query.getAccountId().ifPresent(id -> addParam(params, "account.id", id.toString()));
+    query.getTokenId().ifPresent(id -> addParam(params, "token.id", id.toString()));
+    query.getLimit().ifPresent(l -> addParam(params, "limit", l.toString()));
+    query.getOrder().ifPresent(o -> addParam(params, "order", o.toString()));
 
     final JSON json = getRestClient().doGetCall("/api/v1/nfts", params);
     return new org.hiero.base.data.SinglePage<>(getJsonConverter().toNfts(json));
@@ -70,10 +71,10 @@ public abstract class AbstractMirrorNodeClient<JSON> implements MirrorNodeClient
   public @NonNull Page<AccountInfo> queryAccounts(@NonNull AccountQuery query)
       throws HieroException {
     Objects.requireNonNull(query, "query must not be null");
-    Map<String, String> params = new HashMap<>();
-    query.getLimit().ifPresent(l -> params.put("limit", l.toString()));
-    query.getOrder().ifPresent(o -> params.put("order", o.toString()));
-    query.getBalance().ifPresent(b -> params.put("balance", b.toString()));
+    Map<String, List<String>> params = new HashMap<>();
+    query.getLimit().ifPresent(l -> addParam(params, "limit", l.toString()));
+    query.getOrder().ifPresent(o -> addParam(params, "order", o.toString()));
+    query.getBalance().ifPresent(b -> addParam(params, "balance", b.toString()));
 
     final JSON json = getRestClient().doGetCall("/api/v1/accounts", params);
     return new org.hiero.base.data.SinglePage<>(getJsonConverter().toAccountInfos(json));
@@ -122,22 +123,18 @@ public abstract class AbstractMirrorNodeClient<JSON> implements MirrorNodeClient
   public Page<TransactionInfo> queryTransactions(@NonNull TransactionQuery query)
       throws HieroException {
     Objects.requireNonNull(query, "query must not be null");
-    Map<String, String> params = new HashMap<>();
-    query.getAccountId().ifPresent(id -> params.put("account.id", id.toString()));
-    query.getType().ifPresent(t -> params.put("type", t.getType()));
-    query.getResult().ifPresent(r -> params.put("result", r.name().toLowerCase()));
-    query.getLimit().ifPresent(l -> params.put("limit", l.toString()));
-    query.getOrder().ifPresent(o -> params.put("order", o.toString()));
+    Map<String, List<String>> params = new HashMap<>();
+    query.getAccountId().ifPresent(id -> addParam(params, "account.id", id.toString()));
+    query.getType().ifPresent(t -> addParam(params, "type", t.getType()));
+    query.getResult().ifPresent(r -> addParam(params, "result", r.name().toLowerCase()));
+    query.getLimit().ifPresent(l -> addParam(params, "limit", l.toString()));
+    query.getOrder().ifPresent(o -> addParam(params, "order", o.toString()));
     query
         .getTimestampRange()
         .ifPresent(
             range -> {
-              params.put("timestamp", "gt:" + range.from());
-              // Mirror Node API often uses multiple 'timestamp' params for ranges.
-              // Since our Map is <String, String>, we might need a better way if we want to support multiple.
-              // But for now let's just do one or find another way.
-              // Wait, if I use gt: and lt:, I need two 'timestamp' keys.
-              // My Map doesn't support that.
+              addParam(params, "timestamp", "gt:" + range.from());
+              addParam(params, "timestamp", "lt:" + range.to());
             });
 
     final JSON json = getRestClient().doGetCall("/api/v1/transactions", params);
@@ -192,5 +189,9 @@ public abstract class AbstractMirrorNodeClient<JSON> implements MirrorNodeClient
     Objects.requireNonNull(hash, "hash must not be null");
     final JSON json = getRestClient().queryBlock(hash);
     return getJsonConverter().toBlock(json);
+  }
+
+  private void addParam(Map<String, List<String>> params, String key, String value) {
+    params.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
   }
 }

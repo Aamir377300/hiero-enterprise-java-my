@@ -6,6 +6,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.List;
 import java.util.Map;
 import org.hiero.base.HieroException;
 import org.hiero.base.implementation.MirrorNodeRestClient;
@@ -36,12 +37,14 @@ public class MirrorNodeRestClientImpl implements MirrorNodeRestClient<JsonObject
   }
 
   @Override
-  public @NonNull JsonObject doGetCall(@NonNull String path, @NonNull Map<String, String> queryParams)
-      throws HieroException {
+  public @NonNull JsonObject doGetCall(
+      @NonNull String path, @NonNull Map<String, List<String>> queryParams) throws HieroException {
     Client client = ClientBuilder.newClient();
     WebTarget target = client.target(this.target).path(path);
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-      target = target.queryParam(entry.getKey(), entry.getValue());
+    for (Map.Entry<String, List<String>> entry : queryParams.entrySet()) {
+      for (String value : entry.getValue()) {
+        target = target.queryParam(entry.getKey(), value);
+      }
     }
     Response response = target.request(MediaType.APPLICATION_JSON).get();
 
