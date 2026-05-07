@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import org.hiero.base.HieroException;
@@ -29,6 +30,16 @@ public class MirrorNodeRestClientImpl implements MirrorNodeRestClient<JsonNode> 
 
   public JsonNode doGetCall(String path) throws HieroException {
     return doGetCall(builder -> builder.path(path).build());
+  }
+
+  @Override
+  public JsonNode doGetCall(String path, Map<String, String> queryParams) throws HieroException {
+    return doGetCall(
+        builder -> {
+          builder.path(path);
+          queryParams.forEach(builder::queryParam);
+          return builder.build();
+        });
   }
 
   public JsonNode doGetCall(Function<UriBuilder, URI> uriFunction) throws HieroException {

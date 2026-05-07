@@ -4,6 +4,7 @@ import com.hedera.hashgraph.sdk.AccountId;
 import com.hedera.hashgraph.sdk.ContractId;
 import com.hedera.hashgraph.sdk.TokenId;
 import com.hedera.hashgraph.sdk.TopicId;
+import java.util.Map;
 import java.util.Objects;
 import org.hiero.base.HieroException;
 import org.jspecify.annotations.NonNull;
@@ -69,6 +70,9 @@ public interface MirrorNodeRestClient<JSON> {
   }
 
   @NonNull JSON doGetCall(@NonNull String path) throws HieroException;
+
+  @NonNull JSON doGetCall(@NonNull String path, @NonNull Map<String, String> queryParams)
+      throws HieroException;
 
   @NonNull
   default JSON queryContracts() throws HieroException {

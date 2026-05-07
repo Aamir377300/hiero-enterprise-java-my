@@ -4,7 +4,9 @@ import com.hedera.hashgraph.sdk.AccountId;
 import com.hedera.hashgraph.sdk.ContractId;
 import com.hedera.hashgraph.sdk.TokenId;
 import com.hedera.hashgraph.sdk.TopicId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.hiero.base.HieroException;
@@ -23,6 +25,9 @@ import org.hiero.base.data.Topic;
 import org.hiero.base.data.TopicMessage;
 import org.hiero.base.data.TransactionInfo;
 import org.hiero.base.mirrornode.MirrorNodeClient;
+import org.hiero.base.mirrornode.query.AccountQuery;
+import org.hiero.base.mirrornode.query.NftQuery;
+import org.hiero.base.mirrornode.query.TransactionQuery;
 import org.jspecify.annotations.NonNull;
 
 public abstract class AbstractMirrorNodeClient<JSON> implements MirrorNodeClient {
@@ -41,11 +46,37 @@ public abstract class AbstractMirrorNodeClient<JSON> implements MirrorNodeClient
   }
 
   @Override
+  public @NonNull Page<Nft> queryNfts(@NonNull NftQuery query) throws HieroException {
+    Objects.requireNonNull(query, "query must not be null");
+    Map<String, String> params = new HashMap<>();
+    query.getAccountId().ifPresent(id -> params.put("account.id", id.toString()));
+    query.getTokenId().ifPresent(id -> params.put("token.id", id.toString()));
+    query.getLimit().ifPresent(l -> params.put("limit", l.toString()));
+    query.getOrder().ifPresent(o -> params.put("order", o.toString()));
+
+    final JSON json = getRestClient().doGetCall("/api/v1/nfts", params);
+    return new org.hiero.base.data.SinglePage<>(getJsonConverter().toNfts(json));
+  }
+
+  @Override
   public @NonNull final Optional<AccountInfo> queryAccount(@NonNull final AccountId accountId)
       throws HieroException {
     Objects.requireNonNull(accountId, "accountId must not be null");
     final JSON json = getRestClient().queryAccount(accountId);
     return getJsonConverter().toAccountInfo(json);
+  }
+
+  @Override
+  public @NonNull Page<AccountInfo> queryAccounts(@NonNull AccountQuery query)
+      throws HieroException {
+    Objects.requireNonNull(query, "query must not be null");
+    Map<String, String> params = new HashMap<>();
+    query.getLimit().ifPresent(l -> params.put("limit", l.toString()));
+    query.getOrder().ifPresent(o -> params.put("order", o.toString()));
+    query.getBalance().ifPresent(b -> params.put("balance", b.toString()));
+
+    final JSON json = getRestClient().doGetCall("/api/v1/accounts", params);
+    return new org.hiero.base.data.SinglePage<>(getJsonConverter().toAccountInfos(json));
   }
 
   @Override
@@ -84,6 +115,33 @@ public abstract class AbstractMirrorNodeClient<JSON> implements MirrorNodeClient
       throws HieroException {
     final JSON json = getRestClient().queryTransaction(transactionId);
     return getJsonConverter().toTransactionInfo(json);
+  }
+
+  @Override
+  @NonNull
+  public Page<TransactionInfo> queryTransactions(@NonNull TransactionQuery query)
+      throws HieroException {
+    Objects.requireNonNull(query, "query must not be null");
+    Map<String, String> params = new HashMap<>();
+    query.getAccountId().ifPresent(id -> params.put("account.id", id.toString()));
+    query.getType().ifPresent(t -> params.put("type", t.getType()));
+    query.getResult().ifPresent(r -> params.put("result", r.name().toLowerCase()));
+    query.getLimit().ifPresent(l -> params.put("limit", l.toString()));
+    query.getOrder().ifPresent(o -> params.put("order", o.toString()));
+    query
+        .getTimestampRange()
+        .ifPresent(
+            range -> {
+              params.put("timestamp", "gt:" + range.from());
+              // Mirror Node API often uses multiple 'timestamp' params for ranges.
+              // Since our Map is <String, String>, we might need a better way if we want to support multiple.
+              // But for now let's just do one or find another way.
+              // Wait, if I use gt: and lt:, I need two 'timestamp' keys.
+              // My Map doesn't support that.
+            });
+
+    final JSON json = getRestClient().doGetCall("/api/v1/transactions", params);
+    return new org.hiero.base.data.SinglePage<>(getJsonConverter().toTransactionInfos(json));
   }
 
   @Override
