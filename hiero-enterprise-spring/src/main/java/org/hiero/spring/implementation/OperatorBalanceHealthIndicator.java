@@ -39,7 +39,7 @@ public class OperatorBalanceHealthIndicator implements HealthIndicator {
       return builder.withDetail("status", "Balance is sufficient").build();
     } catch (Exception e) {
       return Health.down()
-          .withDetail("error", "Could not retrieve operator balance")
+          .withDetail("status", "Could not retrieve operator balance")
           .withDetail("reason", e.getMessage())
           .build();
     }

@@ -25,7 +25,7 @@ public class MirrorNodeHealthIndicator implements HealthIndicator {
           .build();
     } catch (Exception e) {
       return Health.down()
-          .withDetail("error", "Mirror Node is unreachable")
+          .withDetail("status", "Mirror Node is unreachable")
           .withDetail("reason", e.getMessage())
           .build();
     }
